@@ -13,5 +13,7 @@ public class Bootstrap : MonoBehaviour
         M.soundSystem = FindFirstObjectByType<SoundSystem>();
         M.prefabs = FindFirstObjectByType<PrefabsManager>();
         M.effects = FindFirstObjectByType<Effects>();
+        
+        M.game.StartGame();
     }
 }

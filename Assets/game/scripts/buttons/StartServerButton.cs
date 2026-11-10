@@ -1,14 +1,11 @@
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 
 public class StartServerButton : ElasticButton
 {
-    public override void OnButtonPressed()
+    public async override void OnButtonPressed()
     {
-        M.game.serverNM.OnServerStarted += () =>
-        {
-            Debug.Log("dildo host connected???");
-        };
-        M.game.serverNM.StartHost();
+        await M.game.StartSessionAsHost();
     }
 }
