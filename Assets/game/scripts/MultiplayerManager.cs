@@ -9,36 +9,62 @@ using Unity.Services.Authentication;
 using Unity.Services.Core;
 using System;
 using UnityEngine.UI;
+using Unity.VisualScripting;
+using DG.Tweening;
 
-public class Game : MonoBehaviour
+public class MultiplayerManager : MonoBehaviour
 {
-    public List<Button> buttons;
-    public bool paused = false;
-    public bool buttonsActive = true;
-
-    public TMP_Text connectingText;
     public TMP_InputField codeInputField;
-    public TMP_Text infoText;
+
+    public TMP_Text roomText;
+    public Logging logger;
+
+    public List<Button> buttons;
+
+    public Button playButton;
+
+    public ISession currentSession;
+
+    public bool opened = false;
 
     public bool waitingForPlayer = false;
 
+    public async Task LeaveSession()
+    {
+        await currentSession.LeaveAsync();
+    }
+
     public async Task StartSessionAsHost()
     {
-        Debug.Log("Starting host...");
+        logger.Log("Starting host...", Color.white);
         var options = new SessionOptions
         {
             MaxPlayers = 2
         }.WithRelayNetwork(); // or WithDistributedAuthorityNetwork() to use Distributed Authority instead of Relay
         var session = await MultiplayerService.Instance.CreateSessionAsync(options);
         Debug.Log($"Session {session.Id} created! Join code: {session.Code}");
+        logger.Log("room created", Color.green);
+        currentSession = session;
 
         StartWaitingForPlayer();
+    }
+
+    public void UpdateRoomText()
+    {
+        roomText.text = currentSession.PlayerCount + "/" + currentSession.MaxPlayers + " players"
+        + "\ncode: " + currentSession.Code;
+
+        if (currentSession.PlayerCount == currentSession.MaxPlayers)
+        {
+            playButton.transform.DOScale(1, 0.5f);
+            playButton.active = true;
+        }
     }
 
     public void StartWaitingForPlayer()
     {
         waitingForPlayer = true;
-
+        UpdateRoomText();
     }
 
     public async Task JoinSessionByCode(string joinCode)
@@ -69,21 +95,27 @@ public class Game : MonoBehaviour
 	    }
     }
 
-    public void StartGame()
+    public void Open()
     {
-        InitMultiplayer();
+        gameObject.SetActive(true);
+        foreach (Button button in buttons) button.active = true;
+
+        roomText.text = "";
+        playButton.active = false;
+        playButton.transform.DOKill();
+        playButton.transform.localScale = Vector3.zero;
+
+        currentSession = null;
+    }
+    public void Quit()
+    {
+        foreach (Button button in buttons) button.active = false;
+
+        gameObject.SetActive(false);
     }
 
-    public void UpdateButtons()
-    {
-        foreach (Button button in buttons)
-        {
-            if (button.active) button.UpdateButton();
-        }
-    }
     public void Update()
     {
-        if (paused) return;
-        if (buttonsActive)UpdateButtons();
+        
     }
 }

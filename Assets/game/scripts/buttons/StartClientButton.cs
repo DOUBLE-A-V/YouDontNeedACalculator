@@ -5,6 +5,6 @@ public class StartClientButton : ElasticButton
 {
     public async override void OnButtonPressed()
     {
-        await M.game.JoinSessionByCode(M.game.codeInputField.text);
+        await M.multiplayerManager.JoinSessionByCode(M.multiplayerManager.codeInputField.text);
     }
 }

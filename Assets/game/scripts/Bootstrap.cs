@@ -9,11 +9,12 @@ public class Bootstrap : MonoBehaviour
     void Awake()
     {
         M.cam = Camera.main;
-        M.game = FindFirstObjectByType<Game>();
+        M.multiplayerManager = FindFirstObjectByType<MultiplayerManager>();
         M.soundSystem = FindFirstObjectByType<SoundSystem>();
         M.prefabs = FindFirstObjectByType<PrefabsManager>();
         M.effects = FindFirstObjectByType<Effects>();
         
-        M.game.StartGame();
+        M.multiplayerManager.InitMultiplayer();
+        //M.multiplayerManager.Open();
     }
 }

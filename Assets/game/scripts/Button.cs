@@ -7,6 +7,7 @@ public class Button : MonoBehaviour
     public bool touching = false;
     public bool active = false;
     public bool pressed = false;
+    public string buttonName;
 
     public virtual void OnHover()
     {
