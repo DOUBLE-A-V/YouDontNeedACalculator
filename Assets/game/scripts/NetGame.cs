@@ -6,24 +6,39 @@ using UnityEngine.Video;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
+public class SyncData
+{
+    public Vector3 pos;
+    public int index;
+}
+
 public class NetGame : NetworkBehaviour
 {
-    public List<Entity> entities;
+    public List<Entity> entities = new List<Entity>();
+    public List<Unit> units = new List<Unit>();
+
+    public List<Entity> allEntities = new List<Entity>();
+    public List<Unit> allUnits = new List<Unit>();
 
     public bool ready = false;
     public NetworkVariable<int> keyPressed = new NetworkVariable<int>(-1);
     public int readyPlayersCount = 0;
 
+    public int tickrate = 30;
+    public float tickTimer = 0;
+
+    public int entityIndexCount = 0;
+
+    public Vector3 basePos;
+
     public override void OnNetworkSpawn()
     {
-        keyPressed.OnValueChanged += OnKeyPressed;
         PlayerConnectedRpc();
         M.netgame = this;
     }
 
     public async override void OnNetworkDespawn()
     {
-        keyPressed.OnValueChanged -= OnKeyPressed;
         if (IsClient) await M.multiplayerManager.LeaveSession();
     }
 
@@ -39,15 +54,25 @@ public class NetGame : NetworkBehaviour
     }
 
     [Rpc(SendTo.Everyone)]
-    public async void StartGameRpc()
+    public void SpawnUnitRpc(string unitName)
     {
+        Debug.Log("fuck you");
+        Unit unit = Instantiate(M.prefabs.units[0]);
+        unit.transform.position = basePos;
+        unit.index = entityIndexCount;
+        entityIndexCount++;
+
+        units.Add(unit);
+        entities.Add(unit);
         
+        allUnits.Add(unit);
+        allEntities.Add(unit);
     }
-    
-    [Rpc(SendTo.Server)]
-    public void SetKeyPressedRpc(int newValue)
+
+    [Rpc(SendTo.Everyone)]
+    public void StartGameRpc()
     {
-        keyPressed.Value = newValue;
+        M.multiplayerManager.logger.Log("starting game", Color.white);
     }
     [Rpc(SendTo.Server)]
     public void PlayerConnectedRpc()
@@ -73,11 +98,67 @@ public class NetGame : NetworkBehaviour
     {
         ReadyPlayerRpc();
     }
+
+    public List<SyncData> ConvertFloatArrayToSyncData(float[][] arr)
+    {
+        List<SyncData> result = new List<SyncData>();
+        foreach (float[] dataArray in arr)
+        {
+            List<float> data = new List<float>(dataArray);
+            result.Add(
+                new SyncData()
+                {
+                    pos = new Vector3(data[1], data[2], 0),
+                    index = Mathf.RoundToInt(data[0])
+                }
+            );
+        }
+        return result;
+    }
+
+    [Rpc(SendTo.NotServer)]
+    public void SynchronizeRpc(float[][] syncEntitiesArray)
+    {
+        List<SyncData> syncEntities = ConvertFloatArrayToSyncData(syncEntitiesArray);
+        foreach (Entity entity in allEntities)
+        {
+            SyncData serverEntity = syncEntities.Find(x => x.index == entity.index);
+            if (serverEntity != null) entity.Synchronize(serverEntity);
+        }
+    }
+
+    public float[][] GetEntitySyncData()
+    {
+        List<float[]> resultRaw = new List<float[]>();
+        foreach (Entity entity in allEntities)
+        {
+            resultRaw.Add(
+                new float[] {entity.index, entity.transform.position.x, entity.transform.position.y}
+            );
+        }
+        
+        return resultRaw.ToArray();
+    }
     
+    public void UpdateAllUnits()
+    {
+        Debug.Log(allUnits.Count);
+        foreach (Unit unit in allUnits)
+        {
+            unit.UpdateUnit();
+        }
+    }
+
     public void Update()
     {
         if (!IsOwner) return;
-        if (Input.GetKeyDown(KeyCode.E)) SetKeyPressedRpc(1);
-        if (Input.GetKeyDown(KeyCode.Q)) SetKeyPressedRpc(2);
+        UpdateAllUnits();
+
+        tickTimer -= Time.deltaTime;
+        if (tickTimer <= 0)
+        {
+            tickTimer = 1f / tickrate;
+            SynchronizeRpc(GetEntitySyncData());
+        }
     }
 }

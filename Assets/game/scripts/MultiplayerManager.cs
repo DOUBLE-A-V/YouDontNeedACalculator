@@ -47,10 +47,12 @@ public class MultiplayerManager : MonoBehaviour
         currentSession = session;
 
         StartWaitingForPlayer();
+        UpdateRoomText();
     }
 
     public void UpdateRoomText()
     {
+        if (currentSession == null) return;
         roomText.text = currentSession.PlayerCount + "/" + currentSession.MaxPlayers + " players"
         + "\ncode: " + currentSession.Code;
 
@@ -71,9 +73,13 @@ public class MultiplayerManager : MonoBehaviour
     {
         try
         {
+            logger.Log("joining room...", Color.white);
             ISession session = await MultiplayerService.Instance.JoinSessionByCodeAsync(joinCode);
+            currentSession = session;
+            logger.Log("joined room", Color.green);
             Debug.Log($"Joined session {session.Id}. Network state: {session.Network.State:G}");
             session.Network.StateChanged += state => Debug.Log($"Network state changed: {state:G}");
+            UpdateRoomText();
         }
         catch (SessionException e)
         {
@@ -114,8 +120,16 @@ public class MultiplayerManager : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+    public void UpdateButtons()
+    {
+        foreach (Button button in buttons)
+        {
+            if (button.active) button.UpdateButton();
+        }
+    }
+
     public void Update()
     {
-        
+        UpdateButtons();
     }
 }
