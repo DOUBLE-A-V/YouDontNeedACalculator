@@ -29,6 +29,10 @@ public class MultiplayerManager : MonoBehaviour
 
     public bool waitingForPlayer = false;
 
+    public NetGame netgame;
+
+    public List<SyncData> syncPool;
+
     public async Task LeaveSession()
     {
         await currentSession.LeaveAsync();

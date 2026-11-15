@@ -5,7 +5,10 @@ using System;
 using UnityEngine.Video;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq.Expressions;
+using Unity.VisualScripting;
 
+[Serializable]
 public class SyncData
 {
     public Vector3 pos;
@@ -34,7 +37,8 @@ public class NetGame : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         PlayerConnectedRpc();
-        M.netgame = this;
+        if (IsOwner)M.multiplayerManager.netgame = this;
+        if (IsOwner)M.netgame = this;
     }
 
     public async override void OnNetworkDespawn()
@@ -56,7 +60,6 @@ public class NetGame : NetworkBehaviour
     [Rpc(SendTo.Everyone)]
     public void SpawnUnitRpc(string unitName)
     {
-        Debug.Log("fuck you");
         Unit unit = Instantiate(M.prefabs.units[0]);
         unit.transform.position = basePos;
         unit.index = entityIndexCount;
@@ -65,8 +68,18 @@ public class NetGame : NetworkBehaviour
         units.Add(unit);
         entities.Add(unit);
         
-        allUnits.Add(unit);
-        allEntities.Add(unit);
+        M.netgame.allUnits.Add(unit);
+        M.netgame.allEntities.Add(unit);
+    }
+
+    [Rpc(SendTo.NotOwner)]
+    public void SendOrderRpc(string orderName, float[] orderArgs, int unitId)
+    {
+        if (orderName == "move")
+        {
+            Unit unit = M.netgame.allUnits.Find(x => x.index == unitId);
+            if (unit) unit.targetPos = new Vector3(orderArgs[0], orderArgs[1], 0);
+        }
     }
 
     [Rpc(SendTo.Everyone)]
@@ -119,11 +132,18 @@ public class NetGame : NetworkBehaviour
     [Rpc(SendTo.NotServer)]
     public void SynchronizeRpc(float[][] syncEntitiesArray)
     {
-        List<SyncData> syncEntities = ConvertFloatArrayToSyncData(syncEntitiesArray);
-        foreach (Entity entity in allEntities)
+        try
         {
-            SyncData serverEntity = syncEntities.Find(x => x.index == entity.index);
-            if (serverEntity != null) entity.Synchronize(serverEntity);
+            List<SyncData> syncEntities = ConvertFloatArrayToSyncData(syncEntitiesArray);
+            M.multiplayerManager.syncPool = syncEntities;
+            foreach (Entity entity in M.netgame.allEntities)
+            {
+                SyncData serverEntity = syncEntities.Find(x => x.index == entity.index);
+                if (serverEntity != null) entity.Synchronize(serverEntity);
+            }
+        } catch (Exception ex)
+        {
+            
         }
     }
 
@@ -133,7 +153,7 @@ public class NetGame : NetworkBehaviour
         foreach (Entity entity in allEntities)
         {
             resultRaw.Add(
-                new float[] {entity.index, entity.transform.position.x, entity.transform.position.y}
+                new float[3]{entity.index, entity.transform.position.x, entity.transform.position.y}
             );
         }
         
@@ -142,7 +162,6 @@ public class NetGame : NetworkBehaviour
     
     public void UpdateAllUnits()
     {
-        Debug.Log(allUnits.Count);
         foreach (Unit unit in allUnits)
         {
             unit.UpdateUnit();
@@ -154,11 +173,14 @@ public class NetGame : NetworkBehaviour
         if (!IsOwner) return;
         UpdateAllUnits();
 
-        tickTimer -= Time.deltaTime;
-        if (tickTimer <= 0)
+        if (IsServer)
         {
-            tickTimer = 1f / tickrate;
-            SynchronizeRpc(GetEntitySyncData());
+            tickTimer -= Time.deltaTime;
+            if (tickTimer <= 0)
+            {
+                tickTimer = 1f / tickrate;
+                SynchronizeRpc(GetEntitySyncData());
+            }
         }
     }
 }

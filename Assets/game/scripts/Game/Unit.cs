@@ -12,7 +12,7 @@ public class Unit : Entity
 
     public void UpdateUnit()
     {
-        if (col.bounds.Contains(M.cam.ScreenToWorldPoint(Input.mousePosition)))
+        if (col.OverlapPoint(M.cam.ScreenToWorldPoint(Input.mousePosition)))
         {
             if (Input.GetMouseButtonDown(0))
             {
@@ -20,12 +20,17 @@ public class Unit : Entity
             }
         }
 
-        if (Input.GetMouseButtonDown(1) && selected) targetPos = M.cam.ScreenToWorldPoint(Input.mousePosition);
+        if (Input.GetMouseButtonDown(1) && selected)
+        {
+            targetPos = M.cam.ScreenToWorldPoint(Input.mousePosition);
+            targetPos.z = 0;
+            M.netgame.SendOrderRpc("move", new float[]{targetPos.x, targetPos.y}, index);
+        }
         
         if (targetPos != transform.position)
         {
-            transform.position += (targetPos - transform.position).normalized * speed * speedModifier;
-            if (Vector2.Distance(transform.position, targetPos) < speed / 10f) transform.position = targetPos;
+            transform.position += (targetPos - transform.position).normalized * speed * speedModifier * Time.deltaTime;
+            if (Vector2.Distance(transform.position, targetPos) < speed * speedModifier * Time.deltaTime * 2) transform.position = targetPos;
         }
     }
 }
