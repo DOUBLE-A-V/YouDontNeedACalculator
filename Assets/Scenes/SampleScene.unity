@@ -650,6 +650,8 @@ MonoBehaviour:
   playButton: {fileID: 1337717067}
   opened: 0
   waitingForPlayer: 0
+  netgame: {fileID: 0}
+  syncPool: []
 --- !u!1 &1248211930
 GameObject:
   m_ObjectHideFlags: 0

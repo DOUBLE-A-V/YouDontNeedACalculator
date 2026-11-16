@@ -72,13 +72,33 @@ public class NetGame : NetworkBehaviour
         M.netgame.allEntities.Add(unit);
     }
 
+    public List<Vector3> ConvertOrderDataToMovePath(float[] data)
+    {
+        List<Vector3> result = new List<Vector3>();
+        bool xswitch = true;
+        float x = 0;
+        foreach (float f in data)
+        {
+            if (xswitch)
+            {
+                x = f;
+                xswitch = false;
+            } else
+            {
+                xswitch = true;
+                result.Add(new Vector3(x, f, 0));
+            }
+        }
+        return result;
+    }
+
     [Rpc(SendTo.NotOwner)]
     public void SendOrderRpc(string orderName, float[] orderArgs, int unitId)
     {
         if (orderName == "move")
         {
             Unit unit = M.netgame.allUnits.Find(x => x.index == unitId);
-            if (unit) unit.targetPos = new Vector3(orderArgs[0], orderArgs[1], 0);
+            if (unit) unit.movePath = ConvertOrderDataToMovePath(orderArgs);
         }
     }
 
